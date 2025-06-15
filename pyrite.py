@@ -4,7 +4,7 @@ import sqlite3
 import datetime
 from dataclasses import dataclass
 
-# TODO hybrid methods https://stackoverflow.com/questions/28237955/same-name-for-classmethod-and-instancemethod
+# TODO 
 #   https://docs.sqlalchemy.org/en/13/orm/extensions/hybrid.html#module-sqlalchemy.ext.hybrid
 
 def registerType[P](type:type[P],to_sql: typing.Callable[[P],int|float|str|bytes], from_sql:typing.Callable[[bytes],P]):
@@ -15,6 +15,24 @@ def registerType[P](type:type[P],to_sql: typing.Callable[[P],int|float|str|bytes
 registerType(datetime.date, datetime.date.isoformat, lambda d: datetime.date.fromisoformat(d.decode()),)
 registerType(datetime.datetime, datetime.datetime.isoformat, lambda dt: datetime.datetime.fromisoformat(dt.decode()),)
 registerType(datetime.timedelta, datetime.timedelta.total_seconds, lambda td: datetime.timedelta(seconds=int(td)),)
+
+# https://stackoverflow.com/questions/28237955/same-name-for-classmethod-and-instancemethod
+@dataclass
+class hybridmethod:
+    fclass: type
+    finstance: types.MethodDescriptorType|None = None
+
+    def classmethod(self, fclass):
+        return type(self)(fclass, self.finstance)
+
+    def instancemethod(self, finstance):
+        return type(self)(self.fclass, finstance)
+
+    def __get__(self, instance, cls):
+        if instance is None or self.finstance is None:
+              # either bound to the class, or no instance method available
+            return self.fclass.__get__(cls, None)
+        return self.finstance.__get__(instance, cls)
 
 @dataclass
 class Expr:

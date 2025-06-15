@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from microlite import *
+from pyrite import *
 
 @table
 class artists:
@@ -46,7 +46,7 @@ DB('chinook.db', debug=True)
 
 
 def test_expr():
-    e = Expr(artists.ArtistId, cmp.eq, 3)
+    e = Expr(artists.ArtistId, '=', 3)
     assert str(e) == 'artists.ArtistId = ?'
     assert tuple(e.__params__) == (3,)
     q = artists.ArtistId == 3
