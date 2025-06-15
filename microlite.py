@@ -4,6 +4,9 @@ import sqlite3
 import datetime
 from dataclasses import dataclass
 
+# TODO hybrid methods https://stackoverflow.com/questions/28237955/same-name-for-classmethod-and-instancemethod
+#   https://docs.sqlalchemy.org/en/13/orm/extensions/hybrid.html#module-sqlalchemy.ext.hybrid
+
 def registerType[P](type:type[P],to_sql: typing.Callable[[P],int|float|str|bytes], from_sql:typing.Callable[[bytes],P]):
     """Define how to pickle a scalar type."""
     sqlite3.register_adapter(type, to_sql)
