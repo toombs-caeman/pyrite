@@ -1,34 +1,35 @@
 #!/usr/bin/env python
+import pytest
 from pyrite import *
 
-@table
-class artists:
+@table('artists')
+class artist:
     ArtistId: Key[int]
     Name: str
 
-@table
-class media_types:
+@table('media_type')
+class media_type:
     MediaTypeId: Key[int]
     Name: str
 
-@table
-class genres:
+@table('genre')
+class genre:
     GenreId: Key[int]
     Name: str
 
-@table
-class albums:
+@table('albums')
+class album:
     AlbumId: Key[int]
     Title: str
-    ArtistId: Fk[artists]
+    ArtistId: Fk[artist]
 
-@table
-class tracks:
+@table('tracks')
+class track:
     TrackId: Key[int]
     Name: str
-    AlbumId: Fk[albums]|None
-    MediaTypeId: Fk[media_types]
-    GenreId: Fk[genres]|None
+    AlbumId: Fk[album]|None
+    MediaTypeId: Fk[media_type]
+    GenreId: Fk[genre]|None
     Composer: str
     Milliseconds: int
     Bytes: int
@@ -42,43 +43,73 @@ class sqlite_master:
     rootpage: str|None
     sql: str|None
 
-DB('chinook.db', debug=True)
-
+    @property
+    def tables(self):
+        return self.type == 'table'
 
 def test_expr():
-    e = Expr(artists.ArtistId, '=', 3)
+    e = Expr(artist.ArtistId, '=', 3)
     assert str(e) == 'artists.ArtistId = ?'
     assert tuple(e.__params__) == (3,)
-    q = artists.ArtistId == 3
+    q = artist.ArtistId == 3
     e = q.where
     assert str(e) == 'artists.ArtistId = ?', 'this should be equivalent to the previous expression'
     assert tuple(e.__params__) == (3,)
     assert str(q) == 'SELECT * FROM artists WHERE artists.ArtistId = ?'
     assert tuple(q.__params__) == (3,)
 
-def test_special():
-    anno = artists.__annotations__['ArtistId']
-    assert anno.__origin__ == Key
-    assert anno.__args__[0] == int
+def test_object():
+    """show that we can create an object in code which"""
+    name = "you've never heard of them"
+    new = artist(Name=name)
+    assert new.Name == name
+    assert new._ == new.ArtistId == None
+    new.save()
+    assert new.ArtistId != None
+    pk = new._
+    new.delete()
+    assert new.ArtistId == None
 
-    anno = albums.__annotations__['ArtistId']
-    assert anno.__origin__ == Fk
-    assert anno.__args__[0] == artists
+    assert get(artist.ArtistId == pk) == new
+
+    # also allow explicitly setting the primary key
+    id = 1
+    name = 'AC/DC'
+    ac = artist(ArtistId=id, Name=name)
+    assert ac.ArtistId == id
+    assert ac.Name == name
 
 
-    assert isinstance(albums.Title, Field)
-    assert isinstance(albums.ArtistId, Fk)
 
-    assert isinstance(albums.ArtistId == 1, Query)
-    assert str(albums.ArtistId == 1) == 'SELECT * FROM albums WHERE albums.ArtistId = ?'
+def test_update():
+    a = (artist.ArtistId == 1).get()
+    oldname = a.Name
+    new_name = f'{oldname}-new and improved'
+    a.Name = new_name
+    a.save()
+    assert (artist.ArtistId == 1).get().Name == new_name
+    a.Name = oldname
+    a.save()
 
-    #assert artists._ == ('artists.ArtistId',), 'primary key'
-    #tables = {t.name:t.sql for t in sqlite_master.type == 'table'}
+def test_fk():
+    a = (album.AlbumId == 1).get()
+    assert a.ArtistId == artist(1, 'AC/DC')
 
-def test_crud():
-    ac = artists(1, 'AC/DC')
-    assert ac == (artists.ArtistId == 1).get()
+@pytest.mark.xfail
+def test_reverse_fk():
+    """
+    Should be able to access the reverse of a foreign key relationship.
+    
+    """
+    q = artist.ArtistId == 1
+    ac = q.get()
+    res = {
+        album(AlbumId=1, Title="For Those About To Rock We Salute You", ArtistId=1,),
+        album(AlbumId=4, Title="Let There Be Rock", ArtistId=1,)
+    }
+    assert set(q._albums) == res
+    assert set(ac._albums) == res
 
 if __name__ == "__main__":
-    import pytest
+    db = DB('chinook.db', debug=True)
     pytest.main([__file__])

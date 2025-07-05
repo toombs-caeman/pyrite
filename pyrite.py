@@ -2,7 +2,7 @@ import types
 import typing
 import sqlite3
 import datetime
-from dataclasses import dataclass
+from dataclasses import dataclass, KW_ONLY
 
 # TODO 
 #   https://docs.sqlalchemy.org/en/13/orm/extensions/hybrid.html#module-sqlalchemy.ext.hybrid
@@ -16,23 +16,8 @@ registerType(datetime.date, datetime.date.isoformat, lambda d: datetime.date.fro
 registerType(datetime.datetime, datetime.datetime.isoformat, lambda dt: datetime.datetime.fromisoformat(dt.decode()),)
 registerType(datetime.timedelta, datetime.timedelta.total_seconds, lambda td: datetime.timedelta(seconds=int(td)),)
 
-# https://stackoverflow.com/questions/28237955/same-name-for-classmethod-and-instancemethod
-@dataclass
-class hybridmethod:
-    fclass: type
-    finstance: types.MethodDescriptorType|None = None
-
-    def classmethod(self, fclass):
-        return type(self)(fclass, self.finstance)
-
-    def instancemethod(self, finstance):
-        return type(self)(self.fclass, finstance)
-
-    def __get__(self, instance, cls):
-        if instance is None or self.finstance is None:
-              # either bound to the class, or no instance method available
-            return self.fclass.__get__(cls, None)
-        return self.finstance.__get__(instance, cls)
+def get(query):
+    return next(iter(query), None)
 
 @dataclass
 class Expr:
@@ -123,6 +108,7 @@ class Key[T](Field):
 
 class Fk[T](Field):
     def __get__(self, obj, t=None):
+        print('get', obj)
         if obj is None:
             return self  # called on type
         # fetch object along foreign key
@@ -132,15 +118,29 @@ class Fk[T](Field):
             self.value = (foreign._ == self.value).first()
         return self.value
 
-def table(cls, name=None):
+
+    def __getattr__(self, k):
+        pass
+    def save(self):
+        print('saved')
+        raise NotImplemented
+
+class row:
+    """represents a row of any table.
+
+    internally contain a dict for 'current' and 'cleaned' values
+    """
+    __fields__: tuple[str, ...] = 'asdf', 'adf', 'sd'
+
+def table(cls, name=None) -> type:
     """class decorator to mark as a table"""
     # handle partial application, and when table_name != class_name
     if isinstance(cls, str):
         return lambda kls: table(kls, name=cls)
-    if name is None:
-        name = cls.__name__
+    name = name or cls.__name__
+    cls.__name__ = name
 
-    cls = dataclass(cls)
+    body = {}
     # construct create table statement
     create = [f'CREATE TABLE IF NOT EXISTS "{name}" (']
     for k,v in cls.__annotations__.items():
@@ -181,10 +181,15 @@ def table(cls, name=None):
             create.append(f' REFERENCES {fk}')
         if not nullable:
             create.append(' NOT NULL')
-        setattr(cls, k, Field(table=cls, name=k))
+        if fk:
+            body[k] = Fk(table=cls, name=k)
+        else:
+            body[k] = Field(table=cls, name=k)
         create.append(',')
     create.append(');')
     cls.__sql__ = ''.join(create)
+    print(name)
+    cls = dataclass(type(name, (cls, _table), body))
     return cls
 
 def DB(

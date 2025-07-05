@@ -9,6 +9,21 @@ Rather than trying to make it the "best" and stuffing as many features in as I c
 
 As before, code lines are counted with `cloc`, and tests don't count.
 
+# use cases
+
+* single object
+    * create object from code
+    * update existing object `insert into {table} values (:pk, :column, :names) on conflict ({pk}) do update (:columns, :except, :pk)`
+    * delete object from db
+    * save new object into db
+
+* get iterable of objects
+* follow foreign key relation
+* preload foreign key relations in query
+* get reverse foreign key relations
+
+
+
 # Concept
 For small experiments, I can write the table create statements by hand, or use an existing example db.
 # What are databases
