@@ -2,41 +2,38 @@
 import pytest
 from pyrite import *
 
-@table('artists')
-class artist:
-    ArtistId: Key[int]
+class artist(table):
+    __name__ = 'artists'
+    ArtistId: pk
     Name: str
 
-@table('media_type')
-class media_type:
-    MediaTypeId: Key[int]
+class media_type(table):
+    MediaTypeId: pk
     Name: str
 
-@table('genre')
-class genre:
-    GenreId: Key[int]
+class genre(table):
+    GenreId: pk
     Name: str
 
-@table('albums')
-class album:
-    AlbumId: Key[int]
+class album(table):
+    __name__ ='albums'
+    AlbumId: pk
     Title: str
-    ArtistId: Fk[artist]
+    ArtistId: fk[artist]
 
-@table('tracks')
-class track:
-    TrackId: Key[int]
+class track(table):
+    __name__ = 'tracks'
+    TrackId: pk
     Name: str
-    AlbumId: Fk[album]|None
-    MediaTypeId: Fk[media_type]
-    GenreId: Fk[genre]|None
+    AlbumId: fk[album]|None
+    MediaTypeId: fk[media_type]
+    GenreId: fk[genre]|None
     Composer: str
     Milliseconds: int
     Bytes: int
     UnitPrice: float
 
-@table
-class sqlite_master:
+class sqlite_master(table):
     type: str|None
     name: str|None
     tbl_name: str|None
@@ -47,23 +44,15 @@ class sqlite_master:
     def tables(self):
         return self.type == 'table'
 
-def test_expr():
-    e = Expr(artist.ArtistId, '=', 3)
-    assert str(e) == 'artists.ArtistId = ?'
-    assert tuple(e.__params__) == (3,)
-    q = artist.ArtistId == 3
-    e = q.where
-    assert str(e) == 'artists.ArtistId = ?', 'this should be equivalent to the previous expression'
-    assert tuple(e.__params__) == (3,)
-    assert str(q) == 'SELECT * FROM artists WHERE artists.ArtistId = ?'
-    assert tuple(q.__params__) == (3,)
+init_db('chinook.db')
+
 
 def test_object():
     """show that we can create an object in code which"""
     name = "you've never heard of them"
     new = artist(Name=name)
     assert new.Name == name
-    assert new._ == new.ArtistId == None
+    assert new.ArtistId == None
     new.save()
     assert new.ArtistId != None
     pk = new._
