@@ -12,6 +12,7 @@ class media_type(table):
     Name: str
 
 class genre(table):
+    __name__ = 'genres'
     GenreId: pk
     Name: str
 
@@ -44,7 +45,7 @@ class sqlite_master(table):
     def tables(self):
         return self.type == 'table'
 
-init_db('chinook.db')
+DB('chinook.db')
 
 
 def test_object():
@@ -59,7 +60,7 @@ def test_object():
     new.delete()
     assert new.ArtistId == None
 
-    assert get(artist.ArtistId == pk) == new
+    assert (artist.ArtistId == pk).get() == new
 
     # also allow explicitly setting the primary key
     id = 1
@@ -82,7 +83,7 @@ def test_update():
 
 def test_fk():
     a = (album.AlbumId == 1).get()
-    assert a.ArtistId == artist(1, 'AC/DC')
+    assert a.ArtistId == artist(ArtistId=1, Name='AC/DC')
 
 @pytest.mark.xfail
 def test_reverse_fk():
@@ -100,5 +101,4 @@ def test_reverse_fk():
     assert set(ac._albums) == res
 
 if __name__ == "__main__":
-    db = DB('chinook.db', debug=True)
     pytest.main([__file__])

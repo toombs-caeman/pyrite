@@ -27,7 +27,7 @@ registerType(
     lambda td: datetime.timedelta(seconds=int(td)),
 )
 
-def init_db(db="file::memory:?cache=shared"):
+def DB(db="file::memory:?cache=shared"):
     for t in table.__all__:
         c = sqlite3.Connection(
             database=db,
@@ -42,7 +42,7 @@ def init_db(db="file::memory:?cache=shared"):
 from table import table, query, Field, fk, pk
 __all__ = [
     'registerType',
-    'init_db',
+    'DB',
     'query',
     'table',
     'Field',
